@@ -6,8 +6,17 @@ import plotly.express as px
 import pandas as pd
 from websockets.sync.client import connect
 
-API_URL = "http://127.0.0.1:8000"
-WS_URL = "ws://127.0.0.1:8000"
+import os
+
+API_URL = os.environ.get("API_URL") or (st.secrets.get("API_URL") if "API_URL" in getattr(st, "secrets", {}) else "http://127.0.0.1:8000")
+API_URL = API_URL.rstrip("/")
+
+if API_URL.startswith("https://"):
+    WS_URL = API_URL.replace("https://", "wss://")
+elif API_URL.startswith("http://"):
+    WS_URL = API_URL.replace("http://", "ws://")
+else:
+    WS_URL = "ws://127.0.0.1:8000"
 
 st.set_page_config(page_title="AI Interview Coach", layout="wide")
 
