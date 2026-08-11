@@ -23,6 +23,14 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Interview Coach")
 
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "AI Interview Coach API",
+        "docs": "/docs"
+    }
+
 class StartSessionRequest(BaseModel):
     jd: str
     resume_text: str
