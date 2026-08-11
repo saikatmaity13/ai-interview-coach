@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langgraph
+openai
+gtts
+faster-whisper
+piper-tts
+sqlalchemy
+streamlit
+streamlit-webrtc
+plotly
+python-dotenv
+numpy
+pydantic
+websockets
+pypdf
