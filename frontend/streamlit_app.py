@@ -244,9 +244,10 @@ else:
         is_audio = False
         
         if audio_val:
-            audio_bytes = audio_val.read()
-            submitted_answer = base64.b64encode(audio_bytes).decode('utf-8')
-            is_audio = True
+            audio_bytes = audio_val.getvalue() if hasattr(audio_val, "getvalue") else audio_val.read()
+            if audio_bytes:
+                submitted_answer = base64.b64encode(audio_bytes).decode('utf-8')
+                is_audio = True
         elif text_val:
             submitted_answer = text_val
             is_audio = False
