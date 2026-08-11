@@ -253,44 +253,52 @@ else:
             
         if submitted_answer:
             with st.spinner("Evaluating answer..."):
+                response = None
+                user_display = "(Audio Answer Recorded)" if is_audio else submitted_answer
+                message = {
+                    "type": "answer_audio" if is_audio else "answer_text",
+                    "audio_data": submitted_answer if is_audio else None,
+                    "transcript": submitted_answer if not is_audio else None
+                }
+                
+                # 1. Primary: Try WebSocket
                 try:
-                    with connect(f"{WS_URL}/session/{st.session_state.session_id}/answer") as websocket:
-                        if is_audio:
-                            message = {
-                                "type": "answer_audio",
-                                "audio_data": submitted_answer
-                            }
-                            user_display = "(Audio Answer Recorded)"
-                        else:
-                            message = {
-                                "type": "answer_text",
-                                "transcript": submitted_answer
-                            }
-                            user_display = submitted_answer
-                            
+                    with connect(f"{WS_URL}/session/{st.session_state.session_id}/answer", timeout=10) as websocket:
                         websocket.send(json.dumps(message))
-                        
                         response_str = websocket.recv()
                         response = json.loads(response_str)
-                        
-                        # Add question and answer to transcript history
-                        st.session_state.transcript_history.append({"role": "assistant", "content": st.session_state.current_question["question"]})
-                        st.session_state.transcript_history.append({"role": "user", "content": user_display})
-                        
-                        if response.get("feedback_live"):
-                            st.session_state.transcript_history.append({"role": "assistant", "content": f"💡 **Feedback:** {response['feedback_live']}"})
-                        
-                        if response.get("feedback_audio"):
-                            st.session_state.feedback_audio = response["feedback_audio"]
-                            
-                        if response["type"] == "end_interview":
-                            st.session_state.interview_ended = True
+                except Exception as ws_err:
+                    # 2. Fallback: HTTP POST
+                    try:
+                        res = requests.post(
+                            f"{API_URL}/session/{st.session_state.session_id}/answer",
+                            json=message,
+                            timeout=30
+                        )
+                        if res.status_code == 200:
+                            response = res.json()
                         else:
-                            st.session_state.current_question = response["next_question"]
-                            if response.get("question_audio"):
-                                st.session_state.question_audio = response["question_audio"]
+                            st.error(f"Server Error: {res.text}")
+                    except Exception as http_err:
+                        st.error(f"Failed to submit answer: {http_err}")
+                
+                if response:
+                    # Add question and answer to transcript history
+                    st.session_state.transcript_history.append({"role": "assistant", "content": st.session_state.current_question["question"]})
+                    st.session_state.transcript_history.append({"role": "user", "content": user_display})
+                    
+                    if response.get("feedback_live"):
+                        st.session_state.transcript_history.append({"role": "assistant", "content": f"💡 **Feedback:** {response['feedback_live']}"})
+                    
+                    if response.get("feedback_audio"):
+                        st.session_state.feedback_audio = response["feedback_audio"]
+                        
+                    if response.get("type") == "end_interview":
+                        st.session_state.interview_ended = True
+                    else:
+                        st.session_state.current_question = response["next_question"]
+                        if response.get("question_audio"):
+                            st.session_state.question_audio = response["question_audio"]
                             
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"WebSocket Error: {e}")
+                st.rerun()
 
